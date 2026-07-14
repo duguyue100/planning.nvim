@@ -324,9 +324,8 @@ local function goto_month(y, m)
   grid.month = m
   grid.cur = { week = 1, day = 1 }
   local offset = first_offset(y, m)
-  local idx = offset + 1
-  grid.cur.day = (idx % 7) + 1
-  grid.cur.week = math.floor(idx / 7) + 1
+  grid.cur.day = (offset % 7) + 1
+  grid.cur.week = math.floor(offset / 7) + 1
   if grid.win and vim.api.nvim_win_is_valid(grid.win) then
     vim.api.nvim_win_set_config(grid.win, { title = month_title(y, m), title_pos = "center" })
   end
