@@ -129,7 +129,12 @@ end
 local function parse_range(s, default_year)
   s = s and s:gsub("^%s+", ""):gsub("%s+$", "") or ""
   if s == "" then return nil, nil end
-  local start_s, end_s = s:match("^(.+)%s*%-%s*(.+)$")
+  -- try spaced separator first (works for all date formats including ISO)
+  local start_s, end_s = s:match("^(.+)%s+-%s+(.+)$")
+  if not start_s then
+    -- bare dash only works for M/D format (no dashes in the dates themselves)
+    start_s, end_s = s:match("^(%d+/%d+)%s*-%s*(%d+/%d+)$")
+  end
   if start_s then
     local sy, sm, sd = parse_date(start_s, default_year)
     local ey, em, ed = parse_date(end_s, default_year)
@@ -210,8 +215,9 @@ local function build_lines()
           show = entries
           overflow = nil
         else
-          show = { entries[1], entries[2] }
-          overflow = #entries - 2
+          show = {}
+          for i = 1, PREVIEW - 1 do show[i] = entries[i] end
+          overflow = #entries - (PREVIEW - 1)
         end
         for i, e in ipairs(show) do
           local txt = e.text
@@ -252,8 +258,9 @@ local function apply_extmarks()
           show = entries
           overflow = nil
         else
-          show = { entries[1], entries[2] }
-          overflow = #entries - 2
+          show = {}
+          for i = 1, PREVIEW - 1 do show[i] = entries[i] end
+          overflow = #entries - (PREVIEW - 1)
         end
         for i, e in ipairs(show) do
           local txt = e.text
@@ -443,14 +450,8 @@ local function day_edit()
         if end_str ~= "" then
           store.update_range(item.idx, text, start_str or e.start, end_str)
         else
+          store.update_range(item.idx, text, e.start, e["end"])
           store.range_to_day(item.idx, day.y, day.m, day.d)
-          local day_entries = store.entries(day.y, day.m, day.d)
-          for _, de in ipairs(day_entries) do
-            if de._type == "day" and de.text == e.text then
-              store.update(day.y, day.m, day.d, de._idx, text)
-              break
-            end
-          end
         end
       end
       day_render()
