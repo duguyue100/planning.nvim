@@ -479,8 +479,14 @@ local function day_move(dir)
   local item = day_item_at(idx)
   if not item then return end
   local target_item = day_item_at(idx + dir)
-  -- can only swap within the same type
-  if not target_item or target_item.type ~= item.type then return end
+  if not target_item then
+    vim.notify("Already at " .. (dir > 0 and "bottom" or "top"), vim.log.levels.INFO)
+    return
+  end
+  if target_item.type ~= item.type then
+    vim.notify("Can't reorder across entry types", vim.log.levels.INFO)
+    return
+  end
   if item.type == "day" then
     store.move(day.y, day.m, day.d, item.idx, dir)
   else
