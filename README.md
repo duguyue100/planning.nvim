@@ -20,7 +20,7 @@ are stored in a local JSON file and autosaved on every change.
 
 ```lua
 {
-  "you/planning.nvim",
+  "duguyue100/planning.nvim",
   cmd = "Planning",
   config = function()
     require("planning").setup()
