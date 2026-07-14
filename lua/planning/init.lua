@@ -493,12 +493,48 @@ local function day_delete()
   end)
 end
 
-local function open_day()
+local function focused_daynum()
   local offset = first_offset(grid.year, grid.month)
   local ndays = days_in_month(grid.year, grid.month)
-  local idx = (grid.cur.week - 1) * 7 + grid.cur.day - 1 -- 0-based cell index
+  local idx = (grid.cur.week - 1) * 7 + grid.cur.day - 1
   local daynum = idx - offset + 1
-  if daynum < 1 or daynum > ndays then return end
+  if daynum < 1 or daynum > ndays then return nil end
+  return daynum
+end
+
+local function grid_focus()
+  if grid.win and vim.api.nvim_win_is_valid(grid.win) then
+    pcall(vim.api.nvim_set_current_win, grid.win)
+  end
+end
+
+local function grid_add()
+  local daynum = focused_daynum()
+  if not daynum then return end
+  vim.ui.input({ prompt = "New entry: " }, function(text)
+    if not text or text == "" then grid_focus() return end
+    local focused_key = date_key(grid.year, grid.month, daynum)
+    vim.ui.input({ prompt = "End date or range (blank = this day): " }, function(range_input)
+      if range_input and range_input ~= "" then
+        local start_str, end_str = parse_range(range_input, grid.year)
+        if not end_str then
+          vim.notify("Invalid date: " .. range_input, vim.log.levels.ERROR)
+          grid_focus()
+          return
+        end
+        store.add_range(text, "new", start_str or focused_key, end_str)
+      else
+        store.add(grid.year, grid.month, daynum, text)
+      end
+      render()
+      grid_focus()
+    end)
+  end)
+end
+
+local function open_day()
+  local daynum = focused_daynum()
+  if not daynum then return end
 
   local buf = vim.api.nvim_create_buf(false, true)
   vim.bo[buf].buftype = "nofile"
@@ -582,6 +618,7 @@ function M.open()
   vim.keymap.set("n", "p", function() shift_month(-1) end, opts)
   vim.keymap.set("n", "<CR>", open_day, opts)
   vim.keymap.set("n", "o", open_day, opts)
+  vim.keymap.set("n", "a", grid_add, opts)
   vim.keymap.set("n", "q", close_grid, opts)
   vim.keymap.set("n", "<Esc>", close_grid, opts)
 

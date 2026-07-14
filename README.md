@@ -55,6 +55,7 @@ today focused.
 | `n`       | Next month                               |
 | `p`       | Previous month                           |
 | `o` / `<CR>` | Open the focused day's detail view       |
+| `a`       | Add an entry to the focused day (text + optional range) |
 | `q` / `<Esc>` | Close the calendar                   |
 
 Each cell shows the day number (top-left) and a preview of up to 3 entries.
@@ -80,7 +81,8 @@ Entries are colored by status:
 
 ### Adding entries with date ranges
 
-When you press `a`, you get two prompts:
+Press `a` from either the calendar grid or the day-detail view. You get two
+prompts:
 
 1. **`New entry:`** — the entry text.
 2. **`End date or range (blank = this day):`** — leave blank for a single-day
