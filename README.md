@@ -7,7 +7,9 @@ entries on each day with a status (`New` / `In Progress` / `Done`). Entries
 can span a single day or a date range. Everything is stored in a local JSON
 file and autosaved on every change.
 
-![planning.nvim](docs/preview.png)
+<img width="1855" height="908" alt="image" src="https://github.com/user-attachments/assets/4b5838fe-3d03-4d56-8862-449ddbeb7a27" />
+<img width="956" height="638" alt="image" src="https://github.com/user-attachments/assets/d16c36a7-3d40-4561-89d5-0ca6e3e680a5" />
+
 
 ## Requirements
 
