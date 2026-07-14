@@ -21,6 +21,11 @@ local STATUS_LABEL = { new = "New", in_progress = "In Progress", done = "Done" }
 
 local ns = vim.api.nvim_create_namespace("planning")
 
+local function define_hl()
+  vim.api.nvim_set_hl(0, "PlanningToday", { link = "Special", default = true })
+  vim.api.nvim_set_hl(0, "PlanningFocus", { link = "Visual", default = true })
+end
+
 -- Grid UI state
 local grid = {
   win = nil,
@@ -98,7 +103,7 @@ local function build_lines()
       if daynum >= 1 and daynum <= ndays then
         local r0 = row_of(w) + 1 -- 1-based buffer row
         local c0 = col_of(d)
-        put(r0, c0 + 1, tostring(daynum))
+        put(r0, c0, tostring(daynum))
         local entries = store.entries(grid.year, grid.month, daynum)
         local show, overflow
         if #entries <= PREVIEW then
@@ -111,10 +116,10 @@ local function build_lines()
         for i, e in ipairs(show) do
           local txt = e.text
           if #txt > CELL_W - 1 then txt = txt:sub(1, CELL_W - 2) .. "…" end
-          put(r0 + i, c0 + 1, txt)
+          put(r0 + i, c0, txt)
         end
         if overflow then
-          put(r0 + PREVIEW, c0 + 1, "+" .. overflow .. " more")
+          put(r0 + PREVIEW, c0, "+" .. overflow .. " more")
         end
       end
     end
@@ -126,6 +131,7 @@ local function apply_extmarks()
   vim.api.nvim_buf_clear_namespace(grid.buf, ns, 0, -1)
   local offset = first_offset(grid.year, grid.month)
   local ndays = days_in_month(grid.year, grid.month)
+  local now = os.date("*t")
   for w = 1, 6 do
     for d = 1, 7 do
       local idx = (w - 1) * 7 + (d - 1)
@@ -134,9 +140,11 @@ local function apply_extmarks()
         local r0 = row_of(w) -- 0-based
         local c0 = col_of(d)
         local numstr = tostring(daynum)
+        local is_today = (grid.year == now.year and grid.month == now.month and daynum == now.day)
         vim.api.nvim_buf_set_extmark(grid.buf, ns, r0, c0, {
           end_col = c0 + #numstr,
-          hl_group = "Number",
+          hl_group = is_today and "PlanningToday" or "Number",
+          priority = 100,
         })
         local entries = store.entries(grid.year, grid.month, daynum)
         local show, overflow
@@ -155,6 +163,7 @@ local function apply_extmarks()
             vim.api.nvim_buf_set_extmark(grid.buf, ns, r0 + i, c0, {
               end_col = c0 + #txt,
               hl_group = hl,
+              priority = 100,
             })
           end
         end
@@ -168,14 +177,17 @@ local function apply_extmarks()
       end
     end
   end
-  -- focused cell: strong highlight on the day-number line
+  -- focused cell: subtle background across all cell rows
   local w, d = grid.cur.week, grid.cur.day
   local r0 = row_of(w)
   local c0 = col_of(d)
-  vim.api.nvim_buf_set_extmark(grid.buf, ns, r0, c0, {
-    end_col = c0 + CELL_W,
-    hl_group = "IncSearch",
-  })
+  for i = 0, CELL_H - 1 do
+    vim.api.nvim_buf_set_extmark(grid.buf, ns, r0 + i, c0, {
+      end_col = c0 + CELL_W,
+      hl_group = "PlanningFocus",
+      priority = 90,
+    })
+  end
 end
 
 local function render()
@@ -247,6 +259,12 @@ local function day_render()
   end
 end
 
+local function day_focus()
+  if day.win and vim.api.nvim_win_is_valid(day.win) then
+    pcall(vim.api.nvim_set_current_win, day.win)
+  end
+end
+
 local function day_close()
   if day.win and vim.api.nvim_win_is_valid(day.win) then
     vim.api.nvim_win_close(day.win, true)
@@ -254,6 +272,9 @@ local function day_close()
   day.win = nil
   day.buf = nil
   render() -- refresh grid previews
+  if grid.win and vim.api.nvim_win_is_valid(grid.win) then
+    pcall(vim.api.nvim_set_current_win, grid.win)
+  end
 end
 
 local function day_cursor_idx()
@@ -267,6 +288,7 @@ local function day_add()
       store.add(day.y, day.m, day.d, text)
       day_render()
     end
+    day_focus()
   end)
 end
 
@@ -280,6 +302,7 @@ local function day_edit()
       store.update(day.y, day.m, day.d, idx, text)
       day_render()
     end
+    day_focus()
   end)
 end
 
@@ -293,8 +316,15 @@ end
 local function day_delete()
   local idx = day_cursor_idx()
   if not idx then return end
-  store.delete(day.y, day.m, day.d, idx)
-  day_render()
+  local e = store.entries(day.y, day.m, day.d)[idx]
+  if not e then return end
+  vim.ui.select({ "Yes", "No" }, { prompt = "Delete: " .. e.text .. "?" }, function(choice)
+    if choice == "Yes" then
+      store.delete(day.y, day.m, day.d, idx)
+      day_render()
+    end
+    day_focus()
+  end)
 end
 
 local function open_day()
@@ -345,6 +375,7 @@ function M.open()
     vim.api.nvim_set_current_win(grid.win)
     return
   end
+  define_hl()
   local now = os.date("*t")
   grid.year = now.year
   grid.month = now.month

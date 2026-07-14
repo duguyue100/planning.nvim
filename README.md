@@ -57,8 +57,11 @@ today focused.
 | `q` / `<Esc>` | Close the calendar                   |
 
 Each cell shows the day number (top-left) and a preview of up to 3 entries.
-When a day has more, the last preview line reads `+k more`. Entries are
-colored by status:
+When a day has more, the last preview line reads `+k more`. The current day's
+number is highlighted with `PlanningToday` (links to `Special`), and the
+focused cell has a `PlanningFocus` background (links to `Visual`).
+
+Entries are colored by status:
 
 - **New** — default text color
 - **In Progress** — yellow (`WarningMsg`)
@@ -71,7 +74,7 @@ colored by status:
 | `a`       | Add a new entry (prompted for text)      |
 | `e`       | Edit the entry on the current line       |
 | `t`       | Cycle status: New → In Progress → Done   |
-| `d`       | Delete the entry on the current line     |
+| `d`       | Delete the entry on the current line (confirms first) |
 | `q` / `<Esc>` | Close the day view, return to grid  |
 
 ## Configuration
@@ -86,6 +89,20 @@ require("planning").setup({
 
 Default data file: `vim.fn.stdpath("state") .. "/planning.nvim/data.json"`
 (typically `~/.local/state/nvim/planning.nvim/data.json`).
+
+### Highlights
+
+| Group           | Default link | Used for                  |
+| --------------- | ------------ | ------------------------- |
+| `PlanningToday` | `Special`    | Today's day number        |
+| `PlanningFocus` | `Visual`     | Focused cell background   |
+
+Override in your colorscheme or config:
+
+```lua
+vim.api.nvim_set_hl(0, "PlanningToday", { bold = true, fg = "#ff9e64" })
+vim.api.nvim_set_hl(0, "PlanningFocus", { bg = "#2a2a3e" })
+```
 
 ## Data format
 
