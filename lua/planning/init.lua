@@ -66,6 +66,7 @@ local day = {
   y = nil,
   m = nil,
   d = nil,
+  items = nil, -- provenance: { {type="day"|"range", idx=N}, ... } per line
 }
 
 -- ---------- date helpers ----------
@@ -92,6 +93,58 @@ end
 -- 0-based buffer row of week w's top (1..6)
 local function row_of(w)
   return 1 + (w - 1) * (CELL_H + GAP) -- +1 for header line
+end
+
+-- parse "YYYY-MM-DD", "M/D", or "M/D/YYYY" -> y, m, d | nil
+local function parse_date(s, default_year)
+  s = s and s:gsub("^%s+", ""):gsub("%s+$", "") or ""
+  if s == "" then return nil end
+  local y, m, d = s:match("^(%d%d%d%d)%-(%d+)%-(%d+)$")
+  if y then y, m, d = tonumber(y), tonumber(m), tonumber(d) end
+  if not y then
+    m, d, y = s:match("^(%d+)/(%d+)%s*$")
+    if m then y = default_year end
+    if not m then
+      m, d, y = s:match("^(%d+)/(%d+)/(%d+)%s*$")
+      if m then y, m, d = tonumber(y), tonumber(m), tonumber(d) end
+    else
+      m, d = tonumber(m), tonumber(d)
+    end
+  end
+  if not (y and m and d) then return nil end
+  if m < 1 or m > 12 or d < 1 or d > 31 then return nil end
+  -- validate via os.time round-trip
+  local t = os.time({ year = y, month = m, day = d })
+  local check = os.date("*t", t)
+  if check.year ~= y or check.month ~= m or check.day ~= d then return nil end
+  return y, m, d
+end
+
+local function date_key(y, m, d)
+  return string.format("%04d-%02d-%02d", y, m, d)
+end
+
+-- parse range input: "7/20" -> start=nil, end_str | "7/14 - 7/20" -> start_str, end_str
+-- returns: start_str|"", end_str|""  ("" means not specified)
+local function parse_range(s, default_year)
+  s = s and s:gsub("^%s+", ""):gsub("%s+$", "") or ""
+  if s == "" then return nil, nil end
+  local start_s, end_s = s:match("^(.+)%s*%-%s*(.+)$")
+  if start_s then
+    local sy, sm, sd = parse_date(start_s, default_year)
+    local ey, em, ed = parse_date(end_s, default_year)
+    if not (sy and ey) then return nil, nil end
+    return date_key(sy, sm, sd), date_key(ey, em, ed)
+  end
+  local ey, em, ed = parse_date(s, default_year)
+  if not ey then return nil, nil end
+  return nil, date_key(ey, em, ed)
+end
+
+-- format "YYYY-MM-DD" -> "Jul 14"
+local function fmt_date(datekey)
+  local y, m, d = datekey:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
+  return os.date("%b %d", os.time({ year = tonumber(y), month = tonumber(m), day = tonumber(d) }))
 end
 
 -- ---------- month grid render ----------
@@ -266,11 +319,21 @@ end
 local function day_render()
   if not (day.buf and vim.api.nvim_buf_is_valid(day.buf)) then return end
   local entries = store.entries(day.y, day.m, day.d)
+  day.items = {}
   local lines = {}
   for i, e in ipairs(entries) do
-    lines[i] = string.format("[%s] %s", STATUS_LABEL[e.status], e.text)
+    day.items[i] = { type = e._type, idx = e._idx }
+    if e._type == "range" then
+      local span = string.format("%s -> %s  ", fmt_date(e.start), fmt_date(e["end"]))
+      lines[i] = string.format("[%s] %s%s", STATUS_LABEL[e.status], span, e.text)
+    else
+      lines[i] = string.format("[%s] %s", STATUS_LABEL[e.status], e.text)
+    end
   end
-  if #lines == 0 then lines[1] = "  (no entries — press a to add)" end
+  if #lines == 0 then
+    lines[1] = "  (no entries -- press a to add)"
+    day.items = {}
+  end
   vim.bo[day.buf].modifiable = true
   vim.api.nvim_buf_set_lines(day.buf, 0, -1, false, lines)
   vim.bo[day.buf].modifiable = false
@@ -306,45 +369,124 @@ local function day_cursor_idx()
   return vim.api.nvim_win_get_cursor(day.win)[1]
 end
 
+local function day_item_at(line)
+  return day.items and day.items[line]
+end
+
 local function day_add()
   vim.ui.input({ prompt = "New entry: " }, function(text)
-    if text and text ~= "" then
-      store.add(day.y, day.m, day.d, text)
+    if not text or text == "" then day_focus() return end
+    local focused_key = date_key(day.y, day.m, day.d)
+    vim.ui.input({ prompt = "End date or range (blank = this day): " }, function(range_input)
+      if range_input and range_input ~= "" then
+        local start_str, end_str = parse_range(range_input, day.y)
+        if not end_str then
+          vim.notify("Invalid date: " .. range_input, vim.log.levels.ERROR)
+          day_focus()
+          return
+        end
+        start_str = start_str or focused_key
+        store.add_range(text, "new", start_str, end_str)
+      else
+        store.add(day.y, day.m, day.d, text)
+      end
       day_render()
-    end
-    day_focus()
+      day_focus()
+    end)
   end)
 end
 
 local function day_edit()
   local idx = day_cursor_idx()
   if not idx then return end
-  local e = store.entries(day.y, day.m, day.d)[idx]
+  local item = day_item_at(idx)
+  if not item then return end
+  local entries = store.entries(day.y, day.m, day.d)
+  local e = entries[idx]
   if not e then return end
+
+  local range_default = ""
+  if e._type == "range" then
+    range_default = fmt_date(e.start) .. " - " .. fmt_date(e["end"])
+  end
+
   vim.ui.input({ prompt = "Edit: ", default = e.text }, function(text)
-    if text then
-      store.update(day.y, day.m, day.d, idx, text)
+    if not text then day_focus() return end
+    vim.ui.input({ prompt = "Range (blank = this day only): ", default = range_default }, function(range_input)
+      local start_str, end_str
+      if range_input and range_input ~= "" then
+        start_str, end_str = parse_range(range_input, day.y)
+        if not end_str then
+          vim.notify("Invalid date: " .. range_input, vim.log.levels.ERROR)
+          day_focus()
+          return
+        end
+      end
+
+      local focused_key = date_key(day.y, day.m, day.d)
+      if e._type == "day" then
+        if end_str then
+          -- day -> range
+          store.day_to_range(day.y, day.m, day.d, item.idx, start_str or focused_key, end_str)
+        else
+          store.update(day.y, day.m, day.d, item.idx, text)
+        end
+      else
+        -- e._type == "range"
+        if end_str then
+          store.update_range(item.idx, text, start_str or e.start, end_str)
+        else
+          -- range -> day
+          store.range_to_day(item.idx, day.y, day.m, day.d)
+          -- now update the new day entry's text
+          local day_entries = store.entries(day.y, day.m, day.d)
+          for _, de in ipairs(day_entries) do
+            if de._type == "day" and de.text == e.text then
+              store.update(day.y, day.m, day.d, de._idx, text)
+              break
+            end
+          end
+        end
+      end
       day_render()
-    end
-    day_focus()
+      day_focus()
+    end)
   end)
 end
 
 local function day_cycle()
   local idx = day_cursor_idx()
   if not idx then return end
-  store.cycle(day.y, day.m, day.d, idx)
+  local item = day_item_at(idx)
+  if not item then return end
+  if item.type == "day" then
+    store.cycle(day.y, day.m, day.d, item.idx)
+  else
+    store.cycle_range(item.idx)
+  end
   day_render()
 end
 
 local function day_delete()
   local idx = day_cursor_idx()
   if not idx then return end
+  local item = day_item_at(idx)
+  if not item then return end
   local e = store.entries(day.y, day.m, day.d)[idx]
   if not e then return end
-  vim.ui.select({ "Yes", "No" }, { prompt = "Delete: " .. e.text .. "?" }, function(choice)
+  local prompt = "Delete: " .. e.text
+  if e._type == "range" then
+    prompt = "Delete: " .. e.text .. " (" .. fmt_date(e.start) .. " -> " .. fmt_date(e["end"]) .. ")?"
+  else
+    prompt = "Delete: " .. e.text .. "?"
+  end
+  vim.ui.select({ "Yes", "No" }, { prompt = prompt }, function(choice)
     if choice == "Yes" then
-      store.delete(day.y, day.m, day.d, idx)
+      if item.type == "day" then
+        store.delete(day.y, day.m, day.d, item.idx)
+      else
+        store.delete_range(item.idx)
+      end
       day_render()
     end
     day_focus()

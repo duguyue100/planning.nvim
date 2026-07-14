@@ -4,7 +4,8 @@ A tiny, dependency-free planning calendar for Neovim.
 
 Open a floating month grid, jump between days with `hjkl`, and keep short
 entries on each day with a status (`New` / `In Progress` / `Done`). Entries
-are stored in a local JSON file and autosaved on every change.
+can span a single day or a date range. Everything is stored in a local JSON
+file and autosaved on every change.
 
 ![planning.nvim](docs/preview.png)
 
@@ -71,11 +72,54 @@ Entries are colored by status:
 
 | Key       | Action                                   |
 | --------- | ---------------------------------------- |
-| `a`       | Add a new entry (prompted for text)      |
+| `a`       | Add a new entry (text + optional date range) |
 | `o`       | Edit the entry on the current line       |
 | `t`       | Cycle status: New → In Progress → Done   |
 | `x`       | Delete the entry on the current line (confirms first) |
 | `q` / `<Esc>` | Close the day view, return to grid  |
+
+### Adding entries with date ranges
+
+When you press `a`, you get two prompts:
+
+1. **`New entry:`** — the entry text.
+2. **`End date or range (blank = this day):`** — leave blank for a single-day
+   entry on the focused day, or specify a range:
+
+| Input         | Result                                  |
+| ------------- | --------------------------------------- |
+| *(blank)*     | Single-day entry on the focused day     |
+| `7/20`        | Range from the focused day to Jul 20    |
+| `7/14 - 7/20` | Full range, Jul 14 to Jul 20            |
+| `2026-07-14 - 2026-07-20` | Same, explicit ISO dates  |
+
+Dates accept `M/D` (year defaults to the current view year) or `YYYY-MM-DD`.
+Ranges can span months (e.g. `7/28 - 8/3`).
+
+### Editing entries
+
+Press `o` on any entry. The text prompt prefills the current text, and the
+range prompt prefills the current range (if any). You can:
+
+- **Edit the text** — just change it.
+- **Resize the range** — type a new range.
+- **Convert range → single-day** — clear the range prompt (leave blank).
+- **Convert single-day → range** — type a range where there wasn't one.
+
+### Range entries in the day view
+
+Range entries show their span so you can tell them apart from day-specific
+entries:
+
+```
+[In Progress] Jul 14 -> Jul 20  Ship planning v1
+[New]                          Buy groceries
+```
+
+Cycling status (`t`) on a range entry updates the **entire range** — one
+entry, one status. Deleting (`x`) removes the whole range (the confirm
+prompt shows the full span). Both operations work from **any day** in the
+range.
 
 ## Configuration
 
@@ -106,19 +150,30 @@ vim.api.nvim_set_hl(0, "PlanningFocus", { bg = "#2a2a3e" })
 
 ## Data format
 
-Plain JSON, one object keyed by `YYYY-MM-DD`:
+Plain JSON with two top-level keys:
 
 ```json
 {
-  "2026-07-14": [
-    { "text": "Ship planning.nvim v1", "status": "in_progress" },
-    { "text": "Write README", "status": "done" }
+  "days": {
+    "2026-07-14": [
+      { "text": "Buy groceries", "status": "new" }
+    ]
+  },
+  "ranges": [
+    { "text": "Ship planning v1", "status": "in_progress", "start": "2026-07-14", "end": "2026-07-20" }
   ]
 }
 ```
 
+- `days` — map of `YYYY-MM-DD` to arrays of single-day entries.
+- `ranges` — array of entries that span multiple days, each with `start` and
+  `end` (both `YYYY-MM-DD`).
+
 `status` is one of `new`, `in_progress`, `done`. The file is rewritten after
 every add / edit / status cycle / delete.
+
+Old data files in the bare `{"YYYY-MM-DD": [...]}` format are migrated
+automatically on first load.
 
 ## Project layout
 
