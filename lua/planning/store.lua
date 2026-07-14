@@ -66,14 +66,16 @@ function M.entries(y, m, d)
   M.load()
   local datekey = key(y, m, d)
   local result = {}
-  local days = data.days[datekey] or {}
-  for i, e in ipairs(days) do
-    result[#result + 1] = { text = e.text, status = e.status, _type = "day", _idx = i }
-  end
+  -- range entries first (always pinned to top)
   for i, r in ipairs(data.ranges) do
     if r.start <= datekey and datekey <= r["end"] then
       result[#result + 1] = { text = r.text, status = r.status, _type = "range", _idx = i, start = r.start, ["end"] = r["end"] }
     end
+  end
+  -- day entries after
+  local days = data.days[datekey] or {}
+  for i, e in ipairs(days) do
+    result[#result + 1] = { text = e.text, status = e.status, _type = "day", _idx = i }
   end
   return result
 end
