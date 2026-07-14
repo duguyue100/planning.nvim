@@ -119,6 +119,16 @@ function M.delete(y, m, d, idx)
   end
 end
 
+function M.move(y, m, d, idx, dir)
+  M.load()
+  local list = data.days[key(y, m, d)]
+  if not list then return end
+  local target = idx + dir
+  if target < 1 or target > #list then return end
+  list[idx], list[target] = list[target], list[idx]
+  M.save()
+end
+
 -- ---------- range-entry CRUD ----------
 
 function M.add_range(text, status, start_str, end_str)
@@ -152,6 +162,14 @@ end
 function M.delete_range(idx)
   M.load()
   table.remove(data.ranges, idx)
+  M.save()
+end
+
+function M.move_range(idx, dir)
+  M.load()
+  local target = idx + dir
+  if target < 1 or target > #data.ranges then return end
+  data.ranges[idx], data.ranges[target] = data.ranges[target], data.ranges[idx]
   M.save()
 end
 

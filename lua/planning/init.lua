@@ -473,6 +473,25 @@ local function day_cycle()
   day_render()
 end
 
+local function day_move(dir)
+  local idx = day_cursor_idx()
+  if not idx then return end
+  local item = day_item_at(idx)
+  if not item then return end
+  local target_item = day_item_at(idx + dir)
+  -- can only swap within the same type
+  if not target_item or target_item.type ~= item.type then return end
+  if item.type == "day" then
+    store.move(day.y, day.m, day.d, item.idx, dir)
+  else
+    store.move_range(item.idx, dir)
+  end
+  day_render()
+  if day.win and vim.api.nvim_win_is_valid(day.win) then
+    pcall(vim.api.nvim_win_set_cursor, day.win, { idx + dir, 0 })
+  end
+end
+
 local function day_delete()
   local idx = day_cursor_idx()
   if not idx then return end
@@ -565,6 +584,8 @@ local function open_day()
   vim.keymap.set("n", "o", day_edit, opts)
   vim.keymap.set("n", "t", day_cycle, opts)
   vim.keymap.set("n", "x", day_delete, opts)
+  vim.keymap.set("n", "J", function() day_move(1) end, opts)
+  vim.keymap.set("n", "K", function() day_move(-1) end, opts)
   vim.keymap.set("n", "q", day_close, opts)
   vim.keymap.set("n", "<Esc>", day_close, opts)
 

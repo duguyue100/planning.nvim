@@ -79,6 +79,8 @@ Entries are colored by status:
 | `o`       | Edit the entry on the current line       |
 | `t`       | Cycle status: New → In Progress → Done   |
 | `x`       | Delete the entry on the current line (confirms first) |
+| `J`       | Move the current entry down              |
+| `K`       | Move the current entry up                |
 | `q` / `<Esc>` | Close the day view, return to grid  |
 
 ### Adding entries with date ranges
