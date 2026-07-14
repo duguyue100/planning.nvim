@@ -53,7 +53,7 @@ today focused.
 | `h` `j` `k` `l` | Move focus between day cells        |
 | `n`       | Next month                               |
 | `p`       | Previous month                           |
-| `<CR>`    | Open the focused day's detail view       |
+| `o` / `<CR>` | Open the focused day's detail view       |
 | `q` / `<Esc>` | Close the calendar                   |
 
 Each cell shows the day number (top-left) and a preview of up to 3 entries.
@@ -74,7 +74,7 @@ Entries are colored by status:
 | `a`       | Add a new entry (prompted for text)      |
 | `e`       | Edit the entry on the current line       |
 | `t`       | Cycle status: New → In Progress → Done   |
-| `d`       | Delete the entry on the current line (confirms first) |
+| `x`       | Delete the entry on the current line (confirms first) |
 | `q` / `<Esc>` | Close the day view, return to grid  |
 
 ## Configuration

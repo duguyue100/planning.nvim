@@ -115,7 +115,7 @@ local function build_lines()
         end
         for i, e in ipairs(show) do
           local txt = e.text
-          if #txt > CELL_W - 1 then txt = txt:sub(1, CELL_W - 2) .. "…" end
+          if #txt > CELL_W - 1 then txt = txt:sub(1, CELL_W - 2) .. ">" end
           put(r0 + i, c0, txt)
         end
         if overflow then
@@ -157,7 +157,7 @@ local function apply_extmarks()
         end
         for i, e in ipairs(show) do
           local txt = e.text
-          if #txt > CELL_W - 1 then txt = txt:sub(1, CELL_W - 2) .. "…" end
+          if #txt > CELL_W - 1 then txt = txt:sub(1, CELL_W - 2) .. ">" end
           local hl = STATUS_HL[e.status]
           if hl then
             vim.api.nvim_buf_set_extmark(grid.buf, ns, r0 + i, c0, {
@@ -361,7 +361,7 @@ local function open_day()
   vim.keymap.set("n", "a", day_add, opts)
   vim.keymap.set("n", "e", day_edit, opts)
   vim.keymap.set("n", "t", day_cycle, opts)
-  vim.keymap.set("n", "d", day_delete, opts)
+  vim.keymap.set("n", "x", day_delete, opts)
   vim.keymap.set("n", "q", day_close, opts)
   vim.keymap.set("n", "<Esc>", day_close, opts)
 
@@ -415,6 +415,7 @@ function M.open()
   vim.keymap.set("n", "n", function() shift_month(1) end, opts)
   vim.keymap.set("n", "p", function() shift_month(-1) end, opts)
   vim.keymap.set("n", "<CR>", open_day, opts)
+  vim.keymap.set("n", "o", open_day, opts)
   vim.keymap.set("n", "q", close_grid, opts)
   vim.keymap.set("n", "<Esc>", close_grid, opts)
 
