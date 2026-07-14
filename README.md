@@ -27,10 +27,6 @@ file and autosaved on every change.
   cmd = "Planning",
   config = function()
     require("planning").setup()
-    -- optional global keymaps
-    vim.keymap.set("n", "<leader>po", "<cmd>Planning<cr>", { desc = "Planning" })
-    vim.keymap.set("n", "<leader>pn", function() require("planning").next_month() end, { desc = "Planning next month" })
-    vim.keymap.set("n", "<leader>pp", function() require("planning").prev_month() end, { desc = "Planning prev month" })
   end,
 }
 ```
