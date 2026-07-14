@@ -147,6 +147,29 @@ local function fmt_date(datekey)
   return os.date("%b %d", os.time({ year = tonumber(y), month = tonumber(m), day = tonumber(d) }))
 end
 
+local RANGE_PROMPT = "Range (blank=this day, e.g. 7/20 or 7/14-7/20): "
+
+-- prompt for a date range, retry on invalid. returns start_str, end_str via callback.
+-- cb(start_str, end_str) — nil,nil = cancelled; "","" = blank (this day only)
+local function prompt_range(default_year, default_val, cb)
+  local function ask()
+    vim.ui.input({ prompt = RANGE_PROMPT, default = default_val }, function(input)
+      if input == nil then cb(nil, nil) return end
+      if input == "" then cb("", "") return end
+      local start_str, end_str = parse_range(input, default_year)
+      if not end_str then
+        vim.notify("Invalid date: " .. input .. " — try again", vim.log.levels.WARN)
+        -- ponytail: retry reuses default_val so user doesn't lose their partial input
+        default_val = input
+        vim.schedule(ask)
+        return
+      end
+      cb(start_str, end_str)
+    end)
+  end
+  ask()
+end
+
 -- ---------- month grid render ----------
 
 local function build_lines()
@@ -377,16 +400,10 @@ local function day_add()
   vim.ui.input({ prompt = "New entry: " }, function(text)
     if not text or text == "" then day_focus() return end
     local focused_key = date_key(day.y, day.m, day.d)
-    vim.ui.input({ prompt = "End date or range (blank = this day): " }, function(range_input)
-      if range_input and range_input ~= "" then
-        local start_str, end_str = parse_range(range_input, day.y)
-        if not end_str then
-          vim.notify("Invalid date: " .. range_input, vim.log.levels.ERROR)
-          day_focus()
-          return
-        end
-        start_str = start_str or focused_key
-        store.add_range(text, "new", start_str, end_str)
+    prompt_range(day.y, "", function(start_str, end_str)
+      if not start_str and not end_str then day_focus() return end -- cancelled
+      if end_str ~= "" then
+        store.add_range(text, "new", start_str or focused_key, end_str)
       else
         store.add(day.y, day.m, day.d, text)
       end
@@ -412,33 +429,21 @@ local function day_edit()
 
   vim.ui.input({ prompt = "Edit: ", default = e.text }, function(text)
     if not text then day_focus() return end
-    vim.ui.input({ prompt = "Range (blank = this day only): ", default = range_default }, function(range_input)
-      local start_str, end_str
-      if range_input and range_input ~= "" then
-        start_str, end_str = parse_range(range_input, day.y)
-        if not end_str then
-          vim.notify("Invalid date: " .. range_input, vim.log.levels.ERROR)
-          day_focus()
-          return
-        end
-      end
+    prompt_range(day.y, range_default, function(start_str, end_str)
+      if not start_str and not end_str then day_focus() return end -- cancelled
 
       local focused_key = date_key(day.y, day.m, day.d)
       if e._type == "day" then
-        if end_str then
-          -- day -> range
+        if end_str ~= "" then
           store.day_to_range(day.y, day.m, day.d, item.idx, start_str or focused_key, end_str)
         else
           store.update(day.y, day.m, day.d, item.idx, text)
         end
       else
-        -- e._type == "range"
-        if end_str then
+        if end_str ~= "" then
           store.update_range(item.idx, text, start_str or e.start, end_str)
         else
-          -- range -> day
           store.range_to_day(item.idx, day.y, day.m, day.d)
-          -- now update the new day entry's text
           local day_entries = store.entries(day.y, day.m, day.d)
           for _, de in ipairs(day_entries) do
             if de._type == "day" and de.text == e.text then
@@ -514,14 +519,9 @@ local function grid_add()
   vim.ui.input({ prompt = "New entry: " }, function(text)
     if not text or text == "" then grid_focus() return end
     local focused_key = date_key(grid.year, grid.month, daynum)
-    vim.ui.input({ prompt = "End date or range (blank = this day): " }, function(range_input)
-      if range_input and range_input ~= "" then
-        local start_str, end_str = parse_range(range_input, grid.year)
-        if not end_str then
-          vim.notify("Invalid date: " .. range_input, vim.log.levels.ERROR)
-          grid_focus()
-          return
-        end
+    prompt_range(grid.year, "", function(start_str, end_str)
+      if not start_str and not end_str then grid_focus() return end -- cancelled
+      if end_str ~= "" then
         store.add_range(text, "new", start_str or focused_key, end_str)
       else
         store.add(grid.year, grid.month, daynum, text)

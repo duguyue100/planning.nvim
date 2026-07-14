@@ -85,8 +85,8 @@ Press `a` from either the calendar grid or the day-detail view. You get two
 prompts:
 
 1. **`New entry:`** — the entry text.
-2. **`End date or range (blank = this day):`** — leave blank for a single-day
-   entry on the focused day, or specify a range:
+2. **`Range (blank=this day, e.g. 7/20 or 7/14-7/20):`** — leave blank for a
+   single-day entry on the focused day, or specify a range:
 
 | Input         | Result                                  |
 | ------------- | --------------------------------------- |
@@ -96,7 +96,8 @@ prompts:
 | `2026-07-14 - 2026-07-20` | Same, explicit ISO dates  |
 
 Dates accept `M/D` (year defaults to the current view year) or `YYYY-MM-DD`.
-Ranges can span months (e.g. `7/28 - 8/3`).
+Ranges can span months (e.g. `7/28 - 8/3`). If you enter an invalid date, the
+prompt re-asks so you don't lose the entry text you already typed.
 
 ### Editing entries
 
