@@ -319,21 +319,46 @@ local function move(dw, dd)
   render()
 end
 
-local function shift_month(delta)
-  local y, m = grid.year, grid.month + delta
-  if m < 1 then m = 12; y = y - 1 elseif m > 12 then m = 1; y = y + 1 end
+local function goto_month(y, m)
   grid.year = y
   grid.month = m
   grid.cur = { week = 1, day = 1 }
-  -- land on day 1 of the new month if it's a real cell
   local offset = first_offset(y, m)
-  local idx = offset + 1 -- cell index (0-based) for day 1
-  grid.cur.day = ((idx) % 7) + 1
+  local idx = offset + 1
+  grid.cur.day = (idx % 7) + 1
   grid.cur.week = math.floor(idx / 7) + 1
   if grid.win and vim.api.nvim_win_is_valid(grid.win) then
     vim.api.nvim_win_set_config(grid.win, { title = month_title(y, m), title_pos = "center" })
   end
   render()
+end
+
+local function shift_month(delta)
+  local y, m = grid.year, grid.month + delta
+  if m < 1 then m = 12; y = y - 1 elseif m > 12 then m = 1; y = y + 1 end
+  goto_month(y, m)
+end
+
+local function prompt_month()
+  local hint = string.format("Month (YYYY/MM or MM, empty=%s)", os.date("%Y/%m"))
+  vim.ui.input({ prompt = hint .. ": " }, function(input)
+    if not input or input == "" then
+      local now = os.date("*t")
+      goto_month(now.year, now.month)
+      return
+    end
+    local y, m = input:match("^(%d%d%d%d)/(%d%d?)%s*$")
+    if not y then
+      m = input:match("^(%d%d?)%s*$")
+      if m then y = grid.year end
+    end
+    y, m = tonumber(y), tonumber(m)
+    if not (y and m) or m < 1 or m > 12 then
+      vim.notify("Invalid month: " .. input, vim.log.levels.WARN)
+      return
+    end
+    goto_month(y, m)
+  end)
 end
 
 local function close_grid()
@@ -644,6 +669,7 @@ function M.open()
   vim.keymap.set("n", "k", function() move(-1, 0) end, opts)
   vim.keymap.set("n", "n", function() shift_month(1) end, opts)
   vim.keymap.set("n", "p", function() shift_month(-1) end, opts)
+  vim.keymap.set("n", "g", prompt_month, opts)
   vim.keymap.set("n", "<CR>", open_day, opts)
   vim.keymap.set("n", "o", open_day, opts)
   vim.keymap.set("n", "a", grid_add, opts)

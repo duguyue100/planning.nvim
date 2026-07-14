@@ -58,6 +58,7 @@ today focused.
 | `h` `j` `k` `l` | Move focus between day cells        |
 | `n`       | Next month                               |
 | `p`       | Previous month                           |
+| `g`       | Goto month — prompt for `YYYY/MM` or `MM` (empty = current month) |
 | `o` / `<CR>` | Open the focused day's detail view       |
 | `a`       | Add an entry to the focused day (text + optional range) |
 | `q` / `<Esc>` | Close the calendar                   |
