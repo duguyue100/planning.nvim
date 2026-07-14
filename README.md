@@ -47,6 +47,8 @@ Clone the repo somewhere on your `runtimepath` and start Neovim. The
 Run `:Planning`. A centered floating window opens on the current month with
 today focused.
 
+`:PlanningReset` wipes all entries (asks for confirmation first).
+
 ### Calendar (month grid) — buffer-local keys
 
 | Key       | Action                                   |

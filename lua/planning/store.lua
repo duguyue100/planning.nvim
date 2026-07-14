@@ -155,6 +155,13 @@ function M.delete_range(idx)
   M.save()
 end
 
+function M.reset()
+  M.load()
+  data.days = {}
+  data.ranges = {}
+  M.save()
+end
+
 -- convert a day-entry to a range-entry (used when editing a day entry to add a range)
 function M.day_to_range(y, m, d, day_idx, start_str, end_str)
   M.load()

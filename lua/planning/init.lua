@@ -629,6 +629,16 @@ end
 M.next_month = function() shift_month(1) end
 M.prev_month = function() shift_month(-1) end
 
+function M.reset()
+  vim.ui.select({ "Yes", "No" }, { prompt = "Delete ALL entries?" }, function(choice)
+    if choice == "Yes" then
+      store.reset()
+      if grid.buf and vim.api.nvim_buf_is_valid(grid.buf) then render() end
+      if day.buf and vim.api.nvim_buf_is_valid(day.buf) then day_render() end
+    end
+  end)
+end
+
 function M.setup(opts)
   opts = opts or {}
   if opts.file then store.set_path(opts.file) end
