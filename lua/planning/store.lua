@@ -90,7 +90,7 @@ end
 
 function M.update(y, m, d, idx, text)
   M.load()
-  local list = data.days[k(y, m, d)]
+  local list = data.days[key(y, m, d)]
   if list and list[idx] then
     list[idx].text = text
     M.save()
@@ -99,7 +99,7 @@ end
 
 function M.cycle(y, m, d, idx)
   M.load()
-  local list = data.days[k(y, m, d)]
+  local list = data.days[key(y, m, d)]
   if list and list[idx] then
     list[idx].status = (list[idx].status == "new" and "in_progress")
       or (list[idx].status == "in_progress" and "done")
