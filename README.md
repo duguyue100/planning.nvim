@@ -72,7 +72,7 @@ Entries are colored by status:
 | Key       | Action                                   |
 | --------- | ---------------------------------------- |
 | `a`       | Add a new entry (prompted for text)      |
-| `e`       | Edit the entry on the current line       |
+| `o`       | Edit the entry on the current line       |
 | `t`       | Cycle status: New → In Progress → Done   |
 | `x`       | Delete the entry on the current line (confirms first) |
 | `q` / `<Esc>` | Close the day view, return to grid  |

@@ -5,11 +5,35 @@ local store = require("planning.store")
 
 local M = {}
 
--- Layout
+-- Layout (computed from terminal size at open time; see compute_layout)
 local CELL_W = 14
-local CELL_H = 4 -- 1 day-number line + 3 preview lines
+local CELL_H = 4 -- 1 day-number line + (CELL_H-1) preview lines
 local GAP = 1 -- space between cells (cols and rows)
 local PREVIEW = 3 -- max entries shown in a cell before "+k more"
+local WIN_RATIO = 0.8 -- target fraction of editor area
+
+-- ponytail: clamp cell sizes so the grid stays readable on narrow terminals
+-- and doesn't over-stretch on huge ones.
+local CELL_W_MIN, CELL_W_MAX = 10, 30
+local CELL_H_MIN, CELL_H_MAX = 4, 8
+
+local function compute_layout()
+  local target_w = math.floor(vim.o.columns * WIN_RATIO)
+  local target_h = math.floor(vim.o.lines * WIN_RATIO)
+  CELL_W = math.max(CELL_W_MIN, math.min(CELL_W_MAX, math.floor((target_w - 6 * GAP) / 7)))
+  CELL_H = math.max(CELL_H_MIN, math.min(CELL_H_MAX, math.floor((target_h - 2 - 5 * GAP) / 6)))
+  PREVIEW = CELL_H - 1
+end
+
+local function grid_size()
+  return 7 * CELL_W + 6 * GAP, 2 + 6 * CELL_H + 5 * GAP
+end
+
+local function day_size()
+  local w = math.min(math.floor(vim.o.columns * WIN_RATIO), 80)
+  local h = math.min(math.floor(vim.o.lines * WIN_RATIO), 20)
+  return math.max(w, 40), math.max(h, 8)
+end
 
 -- Status -> highlight group (nil = default text)
 local STATUS_HL = {
@@ -339,7 +363,7 @@ local function open_day()
   vim.bo[buf].filetype = "planning-day"
   vim.bo[buf].modifiable = false
 
-  local width, height = 64, 14
+  local width, height = day_size()
   local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",
     width = width,
@@ -359,7 +383,7 @@ local function open_day()
 
   local opts = { buffer = buf, noremap = true, silent = true, nowait = true }
   vim.keymap.set("n", "a", day_add, opts)
-  vim.keymap.set("n", "e", day_edit, opts)
+  vim.keymap.set("n", "o", day_edit, opts)
   vim.keymap.set("n", "t", day_cycle, opts)
   vim.keymap.set("n", "x", day_delete, opts)
   vim.keymap.set("n", "q", day_close, opts)
@@ -376,6 +400,7 @@ function M.open()
     return
   end
   define_hl()
+  compute_layout()
   local now = os.date("*t")
   grid.year = now.year
   grid.month = now.month
@@ -391,8 +416,7 @@ function M.open()
   vim.bo[buf].filetype = "planning"
   vim.bo[buf].modifiable = false
 
-  local width = 7 * CELL_W + 6 * GAP
-  local height = 2 + 6 * CELL_H + 5 * GAP
+  local width, height = grid_size()
   local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",
     width = width,
