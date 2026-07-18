@@ -55,6 +55,11 @@ function M.load()
   return data
 end
 
+function M.reload()
+  data = nil
+  return M.load()
+end
+
 function M.save()
   ensure_dir()
   vim.fn.writefile({ vim.fn.json_encode(data) }, path)

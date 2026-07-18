@@ -634,7 +634,7 @@ function M.open()
   local now = os.date("*t")
   grid.year = now.year
   grid.month = now.month
-  store.load()
+  store.reload()
   -- focus today
   local offset = first_offset(grid.year, grid.month)
   local idx = offset + now.day - 1 -- 0-based cell index of today
